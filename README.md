@@ -4,7 +4,7 @@
 > Client-side PII detection and masking tool for Healthcare, Banking, and Chatbot/AI sectors.  
 > All processing happens entirely in the browser — no data ever leaves the device.
 
-![Hero](screenshots/01-hero.png)
+![Hero](01-hero.png)
 
 ---
 
@@ -179,28 +179,28 @@ GİRDİ:  Hasta: Ahmet Kaya, T.C. 34501234560, İlaç: Voltaren 75mg
 ### Sektör Seçimi
 Uygulama açıldığında üç sektör kartı karşılar. Her kart, o sektörde tespit edilen veri tiplerini gösterir.
 
-![Sector Selection](screenshots/02-sector-select.png)
+![Sector Selection](02-sector-select.png)
 
 ---
 
 ### Sektör Bilgi Çubuğu & Giriş Alanı
 Sektör seçilince "Nerede / Neden / Nasıl" bilgi çubuğu açılır. Hazır örnek metinler tek tıkla yüklenir.
 
-![Input Area](screenshots/03-input.png)
+![Input Area](03-input.png)
 
 ---
 
 ### Maskeli Çıktı
 Analiz sonucunda tüm PII'lar renkli tokenlarla değiştirilir. Her token yanında SHA-256 hash kısa kodu gösterilir. Metin doğrudan AI API'ye gönderilebilir hale gelir.
 
-![Masked Output](screenshots/04-masked-output.png)
+![Masked Output](04-masked-output.png)
 
 ---
 
 ### Mapping Vault
 Vault sekmesinde her token için orijinal değer, veri tipi ve tam SHA-256 hash görüntülenir. Bu tablo yalnızca tarayıcı belleğinde tutulur, hiçbir yere gönderilmez.
 
-![Vault](screenshots/05-vault.png)
+![Vault](05-vault.png)
 
 ---
 
