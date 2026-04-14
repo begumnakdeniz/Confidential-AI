@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sırdaş Yapay Zeka · PII Maskeleme</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{min-height:100vh;background:#060810;font-family:'Courier New',monospace;color:#cbd5e1;
+  background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);
+  background-size:44px 44px}
+.wrap{max-width:860px;margin:0 auto;padding:36px 18px}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(255,107,53,.1);border:1px solid rgba(255,107,53,.3);
+  border-radius:999px;padding:5px 16px;margin-bottom:14px;font-size:11px;letter-spacing:3px;color:#ff6b35;text-transform:uppercase}
+h1{font-size:clamp(22px,4vw,38px);font-weight:900;margin-bottom:8px;
+  background:linear-gradient(120deg,#00d4ff,#ff6b35,#a855f7);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.subtitle{color:#475569;font-size:12px;margin-bottom:28px}
+.slabel{font-size:10px;color:#334155;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px}
+.samples{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.sbtn{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:6px 14px;
+  color:#64748b;font-size:11px;cursor:pointer;font-family:inherit;transition:all .2s}
+.sbtn:hover{background:rgba(255,107,53,.1);color:#ff6b35;border-color:rgba(255,107,53,.3)}
+textarea{width:100%;background:rgba(6,10,20,.95);border:1px solid rgba(255,255,255,.1);border-radius:12px;
+  padding:16px;color:#e2e8f0;font-size:13px;line-height:1.8;resize:vertical;
+  font-family:inherit;outline:none;transition:border .2s;margin-bottom:4px}
+textarea:focus{border-color:rgba(255,107,53,.5)}
+.ccount{text-align:right;font-size:11px;color:#334155;margin-bottom:12px}
+#go{width:100%;padding:13px;background:linear-gradient(135deg,#ff6b35,#a855f7);
+  border:none;border-radius:10px;color:#fff;font-size:14px;font-weight:700;cursor:pointer;
+  font-family:inherit;margin-bottom:24px;box-shadow:0 0 30px rgba(255,107,53,.3);transition:all .3s}
+#go:disabled{background:rgba(100,116,139,.12);color:#475569;box-shadow:none;cursor:not-allowed}
+.stats{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px}
+.stat{flex:1 1 110px;border-radius:10px;padding:10px 16px;text-align:center}
+.sv{font-size:20px;font-weight:900}.sl{font-size:10px;color:#475569;margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+.etags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.etag{border-radius:8px;padding:5px 12px;font-size:11px;font-weight:700}
+.tabs{display:flex;gap:4px;background:rgba(255,255,255,.03);border-radius:10px;padding:4px;width:fit-content;margin-bottom:16px}
+.tbtn{background:transparent;border:1px solid transparent;border-radius:7px;padding:7px 16px;color:#475569;
+  font-size:12px;cursor:pointer;font-family:inherit;transition:all .2s}
+.tbtn.on{background:rgba(255,107,53,.2);border-color:rgba(255,107,53,.4);color:#ff6b35;font-weight:700}
+.obox{background:rgba(6,10,20,.95);border:1px solid rgba(255,255,255,.08);border-radius:12px;
+  padding:18px 20px;line-height:2.4;font-size:13px;margin-bottom:12px;word-break:break-word}
+.ohdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.olbl{font-size:10px;color:#334155;letter-spacing:2px;text-transform:uppercase}
+#cpbtn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:6px;
+  padding:4px 12px;color:#64748b;font-size:11px;cursor:pointer;font-family:inherit;transition:all .2s}
+.notice{background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:10px;padding:10px 16px;font-size:12px;color:#22c55e}
+.vwrap{background:rgba(6,10,20,.95);border:1px solid rgba(255,255,255,.08);border-radius:12px;overflow:hidden}
+.vhdr{padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.06);font-size:10px;color:#334155;letter-spacing:2px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{padding:10px 16px;text-align:left;color:#475569;font-weight:600;letter-spacing:1px;font-size:10px;text-transform:uppercase;background:rgba(255,255,255,.03)}
+td{padding:10px 16px;border-top:1px solid rgba(255,255,255,.04)}
+tr:nth-child(even) td{background:rgba(255,255,255,.01)}
+.dbg{background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.2);border-radius:10px;
+  padding:12px 16px;margin-bottom:16px;font-size:11px;color:#22c55e;white-space:pre-wrap}
+.hint{text-align:center;padding:40px 0;color:#1e293b;font-size:13px}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .35s ease}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div style="text-align:center;margin-bottom:32px">
+    <div class="badge">🔬 Microsoft Presidio · SHA-256 Hash</div>
+    <h1>Sırdaş Yapay Zeka · Live Demo</h1>
+    <p class="subtitle">Metindeki tüm hassas verileri tespit et · Maskele · SHA-256 ile hashle</p>
+  </div>
+
+  <div class="slabel">Örnek Metinler</div>
+  <div class="samples">
+    <button class="sbtn" onclick="loadSample(0)">Örnek 1 — Kişi + Telefon + Email</button>
+    <button class="sbtn" onclick="loadSample(1)">Örnek 2 — IBAN + TC Kimlik</button>
+    <button class="sbtn" onclick="loadSample(2)">Örnek 3 — Türkçe Karakterli İsimler</button>
+  </div>
+
+  <textarea id="txt" rows="5" placeholder="Hassas veri içeren metni buraya yazın... (Türkçe karakterler desteklenir: Çeler, Şahin, Özkan, İnan...)" oninput="onInput()"></textarea>
+  <div class="ccount"><span id="cc">0</span> karakter</div>
+  <button id="go" onclick="doAnalyze()" disabled>🔍 Analiz Et &amp; Maskele &amp; Hashle</button>
+
+  <div id="out" style="display:none"></div>
+  <div class="hint" id="hint">↑ Metin girin veya bir örnek seçin</div>
+</div>
+
+<script>
+var SAMPLES = [
+  "Merhaba, ben Mehmet Kaya. 0533-456-7890 numaramdan ulasabilirsiniz. İzmir Bornova'da ikamet ediyorum. E-posta: mehmet.kaya@gmail.com",
+  "Müşteri Ayşe Demir, TR33 0006 1005 1978 6457 8413 17 IBAN'ından 5.000 TL gönderdi. TC kimlik: 98765432101. İletişim: 0312-444-5566",
+  "Toplantıya Fatma Çelik ve Alim Çeler katılacak. fatma@sirket.com adresine mail atın. Tel: 0212-333-4455. Ahmet Yılmaz ve İbrahim Öztürk de gelecek."
+];
+
+var COLORS = {EMAIL_ADDRESS:"#a855f7",IBAN_CODE:"#ec4899",NRP:"#22c55e",PHONE_NUMBER:"#f59e0b",PERSON:"#ff6b35",LOCATION:"#06b6d4"};
+var ICONS  = {EMAIL_ADDRESS:"📧",IBAN_CODE:"🏦",NRP:"🪪",PHONE_NUMBER:"📞",PERSON:"👤",LOCATION:"📍"};
+
+// Turkish uppercase: A-Z + Ç Ğ İ Ö Ş Ü
+// Turkish lowercase: a-z + ç ğ ı i ö ş ü
+var TR_UPPER = "A-ZÇĞİÖŞÜ";
+var TR_LOWER = "a-zçğıöşü";
+
+// City/non-name stopwords — both ASCII and Turkish versions
+var STOP_LIST = [
+  "İzmir","Izmir","Ankara","İstanbul","Istanbul","Bursa","Adana","Antalya",
+  "Bornova","Kadıköy","Kadikoy","Çankaya","Cankaya","Beşiktaş","Besiktas",
+  "Üsküdar","Uskudar","Kayseri","Eskişehir","Eskisehir","Mersin","Konya",
+  "Gaziantep","No","Mah","Sok","Cad","Tel","TC","TR","TL","Adres","Mail",
+  "Ben","Ve","Da","De","Bu","Su","Bir","İki","Iki","Üç","Uc","İle","Ile",
+  "İçin","Icin","Gibi","Haber","Bilgi","Müşteri","Musteri","Toplantı","Toplanti",
+  "İletişim","Iletisim","Eposta","Posta"
+];
+var STOP_SET = {};
+for (var i = 0; i < STOP_LIST.length; i++) STOP_SET[STOP_LIST[i]] = true;
+
+function regexMatches(text, re) {
+  var out = []; re.lastIndex = 0; var m;
+  while ((m = re.exec(text)) !== null)
+    out.push({value: m[0], start: m.index, end: m.index + m[0].length});
+  return out;
+}
+
+function findEmails(text) {
+  return regexMatches(text, /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g);
+}
+
+function findIBANs(text) {
+  var hits = regexMatches(text, /TR\d{2}[ ]?\d{4}[ ]?\d{4}[ ]?\d{4}[ ]?\d{4}[ ]?\d{4}[ ]?\d{0,2}/g);
+  return hits.map(function(h) {
+    var v = h.value.replace(/\s+$/,'');
+    return {value:v, start:h.start, end:h.start+v.length};
+  });
+}
+
+function findTCKN(text) {
+  var out = []; var re = /\d{11}/g; var m; re.lastIndex = 0;
+  while ((m = re.exec(text)) !== null) {
+    var before = m.index > 0 ? text[m.index-1] : ' ';
+    var after  = (m.index+11) < text.length ? text[m.index+11] : ' ';
+    if (!/[0-9]/.test(before) && !/[0-9]/.test(after) && m[0][0] !== '0')
+      out.push({value:m[0], start:m.index, end:m.index+11});
+  }
+  return out;
+}
+
+function findPhones(text) {
+  return regexMatches(text, /0[2-5][0-9]{2}[-\s]?[0-9]{3}[-\s]?[0-9]{2}[-\s]?[0-9]{2}/g);
+}
+
+function findLocations(text) {
+  var cities = [
+    "İzmir","Izmir","Ankara","İstanbul","Istanbul","Bursa","Antalya","Adana",
+    "Konya","Gaziantep","Mersin","Diyarbakır","Diyarbakir","Bornova",
+    "Kadıköy","Kadikoy","Çankaya","Cankaya","Beşiktaş","Besiktas",
+    "Üsküdar","Uskudar","Kayseri","Eskişehir","Eskisehir"
+  ];
+  var out = [];
+  for (var i = 0; i < cities.length; i++) {
+    // Escape special regex chars in city name
+    var escaped = cities[i].replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    var re = new RegExp(escaped + '(?:\\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)?', 'g');
+    var hits = regexMatches(text, re);
+    for (var j = 0; j < hits.length; j++) out.push(hits[j]);
+  }
+  return out;
+}
+
+function findPersons(text) {
+  // KEY FIX: Include Turkish uppercase (ÇĞİÖŞÜ) and lowercase (çğıöşü) in character classes
+  var re = new RegExp(
+    '[' + TR_UPPER + '][' + TR_LOWER + ']{1,20}' +
+    '\\s' +
+    '[' + TR_UPPER + '][' + TR_LOWER + ']{1,20}' +
+    '(?:\\s[' + TR_UPPER + '][' + TR_LOWER + ']{1,20})?',
+    'g'
+  );
+  var hits = regexMatches(text, re);
+  return hits.filter(function(h) {
+    var words = h.value.split(' ');
+    for (var j = 0; j < words.length; j++) {
+      if (STOP_SET[words[j]]) return false;
+    }
+    return words.length >= 2;
+  });
+}
+
+var DETECTORS = [
+  {type:'EMAIL_ADDRESS', fn:findEmails},
+  {type:'IBAN_CODE',     fn:findIBANs},
+  {type:'NRP',           fn:findTCKN},
+  {type:'PHONE_NUMBER',  fn:findPhones},
+  {type:'LOCATION',      fn:findLocations},
+  {type:'PERSON',        fn:findPersons}
+];
+
+function detectAll(text) {
+  var all = [];
+  for (var d = 0; d < DETECTORS.length; d++) {
+    var hits = DETECTORS[d].fn(text);
+    for (var h = 0; h < hits.length; h++) {
+      var hit = hits[h];
+      var overlap = false;
+      for (var e = 0; e < all.length; e++) {
+        if (!(hit.end <= all[e].start || hit.start >= all[e].end)) {overlap=true;break;}
+      }
+      if (!overlap) all.push({type:DETECTORS[d].type, value:hit.value, start:hit.start, end:hit.end});
+    }
+  }
+  all.sort(function(a,b){return a.start-b.start;});
+  return all;
+}
+
+function sha256Short(str) {
+  return window.crypto.subtle.digest("SHA-256", new TextEncoder().encode(str)).then(function(buf) {
+    var bytes = new Uint8Array(buf); var hex = '';
+    for (var i = 0; i < bytes.length; i++) hex += bytes[i].toString(16).padStart(2,'0');
+    return hex.slice(0,8).toUpperCase();
+  });
+}
+
+var STATE = null;
+var ACTIVE_TAB = 'masked';
+
+function loadSample(i) {
+  document.getElementById('txt').value = SAMPLES[i];
+  onInput();
+}
+
+function onInput() {
+  var v = document.getElementById('txt').value;
+  document.getElementById('cc').textContent = v.length;
+  document.getElementById('go').disabled = !v.trim();
+  STATE = null;
+  document.getElementById('out').style.display = 'none';
+  document.getElementById('hint').style.display = v.trim() ? 'none' : 'block';
+}
+
+function doAnalyze() {
+  var text = document.getElementById('txt').value.trim();
+  if (!text) return;
+  var btn = document.getElementById('go');
+  btn.disabled = true;
+  btn.textContent = '⏳ Analiz Ediliyor...';
+  document.getElementById('hint').style.display = 'none';
+  document.getElementById('out').style.display = 'none';
+
+  setTimeout(function() {
+    var entities = detectAll(text);
+    var vault = {}, valueToToken = {}, valueToHash = {}, counters = {};
+
+    var promises = [];
+    for (var i = 0; i < entities.length; i++) {
+      (function(e) {
+        if (valueToToken[e.value]) return;
+        if (!counters[e.type]) counters[e.type] = 1;
+        var token = '[' + e.type + '_' + (counters[e.type]++) + ']';
+        valueToToken[e.value] = token; // reserve immediately
+        var p = sha256Short(e.value).then(function(hash) {
+          vault[token] = {original:e.value, hash:hash, type:e.type};
+          valueToHash[e.value] = hash;
+        });
+        promises.push(p);
+      })(entities[i]);
+    }
+
+    Promise.all(promises).then(function() {
+      // Build masked string by position
+      var masked = '';
+      var cursor = 0;
+      for (var i = 0; i < entities.length; i++) {
+        var e = entities[i];
+        if (e.start > cursor) masked += text.slice(cursor, e.start);
+        var token = valueToToken[e.value];
+        var hash  = valueToHash[e.value];
+        masked += (token && hash) ? (token + '#' + hash) : e.value;
+        cursor = e.end;
+      }
+      masked += text.slice(cursor);
+
+      STATE = {entities:entities, vault:vault, masked:masked, text:text};
+      ACTIVE_TAB = 'masked';
+      renderAll();
+      btn.disabled = false;
+      btn.textContent = '🔍 Analiz Et & Maskele & Hashle';
+    });
+  }, 300);
+}
+
+function renderAll() {
+  var entities = STATE.entities;
+  var el = document.getElementById('out');
+  el.style.display = 'block'; el.className = 'fi';
+
+  var typeCounts = {};
+  for (var i = 0; i < entities.length; i++) {
+    var t = entities[i].type;
+    typeCounts[t] = (typeCounts[t]||0) + 1;
+  }
+
+  var etags = '';
+  for (var type in typeCounts) {
+    var col = COLORS[type]||'#888'; var ic = ICONS[type]||'';
+    etags += '<div class="etag" style="background:'+col+'18;border:1px solid '+col+'44;color:'+col+'">'+ic+' '+type+' &times;'+typeCounts[type]+'</div>';
+  }
+
+  // Show found entities in a debug-style summary
+  var summary = '';
+  if (entities.length === 0) {
+    summary = '<div class="dbg">⚠️ Hiçbir entity bulunamadı. Metin büyük harfle başlayan isimler içermeli.</div>';
+  } else {
+    var lines = entities.map(function(e){return '✓ ['+e.type+'] "'+e.value+'"';}).join('\n');
+    summary = '<div class="dbg">Tespit edilen entityler:\n'+lines+'</div>';
+  }
+
+  el.innerHTML = summary +
+    '<div class="stats">'+
+      sb(entities.length,'Bulunan PII','#ff6b35')+
+      sb(Object.keys(typeCounts).length,'Benzersiz Tip','#a855f7')+
+      sb('SHA-256','Hash Algo','#06b6d4')+
+      sb('SIFIR','Cloud PII','#22c55e')+
+    '</div>'+
+    '<div class="etags">'+etags+'</div>'+
+    '<div class="tabs">'+
+      '<button class="tbtn '+(ACTIVE_TAB==='highlight'?'on':'')+'" onclick="switchTab(\'highlight\')">🔍 Tespit</button>'+
+      '<button class="tbtn '+(ACTIVE_TAB==='masked'?'on':'')+'" onclick="switchTab(\'masked\')">🎭 Maskeli</button>'+
+      '<button class="tbtn '+(ACTIVE_TAB==='vault'?'on':'')+'" onclick="switchTab(\'vault\')">🗄 Vault</button>'+
+    '</div>'+
+    '<div id="tc">'+renderTab()+'</div>';
+}
+
+function switchTab(t) {ACTIVE_TAB=t; renderAll();}
+
+function renderTab() {
+  if (ACTIVE_TAB==='highlight') return renderHighlight();
+  if (ACTIVE_TAB==='masked')    return renderMasked();
+  if (ACTIVE_TAB==='vault')     return renderVault();
+  return '';
+}
+
+function renderHighlight() {
+  var text=STATE.text, entities=STATE.entities;
+  var out='', cursor=0;
+  for (var i=0;i<entities.length;i++) {
+    var e=entities[i];
+    if (e.start>cursor) out+=esc(text.slice(cursor,e.start));
+    var col=COLORS[e.type]||'#888'; var ic=ICONS[e.type]||'';
+    out+='<span style="background:'+col+'28;border:1px solid '+col+'66;color:'+col+';border-radius:5px;padding:1px 6px;font-weight:700" title="'+e.type+'">'+
+      ic+' '+esc(e.value)+'<sup style="font-size:8px;opacity:.6;margin-left:2px">'+e.type+'</sup></span>';
+    cursor=e.end;
+  }
+  out+='<span style="color:#94a3b8">'+esc(text.slice(cursor))+'</span>';
+  return '<div class="obox"><div class="olbl" style="margin-bottom:12px">Ham Metin — Tespit Edilen Entityler</div><div style="line-height:2">'+out+'</div></div>';
+}
+
+function renderMasked() {
+  var masked=STATE.masked;
+  var re=/(\[[A-Z_]+_[0-9]+\])#([A-F0-9]{8})/g;
+  var out='', last=0, m; re.lastIndex=0;
+  while ((m=re.exec(masked))!==null) {
+    if (m.index>last) out+='<span style="color:#94a3b8">'+esc(masked.slice(last,m.index))+'</span>';
+    var token=m[1], hash=m[2];
+    var typeKey=token.replace(/\[([A-Z_]+)_[0-9]+\]/,'$1');
+    var col=COLORS[typeKey]||'#888';
+    out+='<span style="background:'+col+'20;border:1px solid '+col+'55;color:'+col+
+      ';border-radius:6px;padding:2px 8px;font-weight:700;white-space:nowrap;font-size:.9em">'+
+      esc(token)+'<span style="color:'+col+'88;font-size:.8em;margin-left:3px">#'+hash+'</span></span>';
+    last=m.index+m[0].length;
+  }
+  if (last<masked.length) out+='<span style="color:#94a3b8">'+esc(masked.slice(last))+'</span>';
+  return '<div class="obox"><div class="ohdr"><span class="olbl">Maskeli + Hashlenmiş — AI\'ya bu gönderilir</span>'+
+    '<button id="cpbtn" onclick="doCopy()">📋 Kopyala</button></div>'+
+    '<div style="line-height:2.4;word-break:break-word">'+out+'</div></div>'+
+    '<div class="notice">🔒 Bu metin güvenle AI API\'ye gönderilebilir. Gerçek kişisel veri içermez.</div>';
+}
+
+function renderVault() {
+  var rows='';
+  for (var token in STATE.vault) {
+    var v=STATE.vault[token]; var col=COLORS[v.type]||'#888'; var ic=ICONS[v.type]||'';
+    rows+='<tr>'+
+      '<td style="color:'+col+';font-weight:700;font-size:11px">'+esc(token)+'</td>'+
+      '<td><span class="etag" style="background:'+col+'18;border:1px solid '+col+'44;color:'+col+';font-size:10px">'+ic+' '+v.type+'</span></td>'+
+      '<td style="color:#f1f5f9">'+esc(v.original)+'</td>'+
+      '<td style="color:#64748b;font-family:monospace">#'+v.hash+'</td>'+
+      '</tr>';
+  }
+  return '<div class="vwrap"><div class="vhdr">🗄 Mapping Vault — Sadece Lokal Bellekte, Buluta Gitmez</div>'+
+    '<table><thead><tr><th>Token</th><th>Tip</th><th>Orijinal Değer</th><th>SHA-256</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
+}
+
+function sb(val,lbl,color) {
+  return '<div class="stat" style="background:'+color+'10;border:1px solid '+color+'33">'+
+    '<div class="sv" style="color:'+color+'">'+val+'</div>'+
+    '<div class="sl">'+lbl+'</div></div>';
+}
+
+function doCopy() {
+  if (!STATE) return;
+  navigator.clipboard.writeText(STATE.masked).then(function() {
+    var b=document.getElementById('cpbtn');
+    if(b){b.textContent='✓ Kopyalandı';b.style.color='#22c55e';setTimeout(function(){b.textContent='📋 Kopyala';b.style.color='';},2000);}
+  });
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
