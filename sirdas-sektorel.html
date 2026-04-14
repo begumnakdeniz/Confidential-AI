@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sırdaş YZ · Sektörel PII Maskeleme</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap');
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:#04060f;
+  --surface:#080c1a;
+  --surface2:#0d1224;
+  --border:rgba(255,255,255,.07);
+  --text:#c8d4e8;
+  --muted:#3d4f6a;
+  --dimmed:#1e2d42;
+
+  --sector-color:#00d4ff;
+  --sector-glow:rgba(0,212,255,.15);
+  --sector-border:rgba(0,212,255,.3);
+}
+
+body{
+  min-height:100vh;
+  background:var(--bg);
+  font-family:'Space Mono',monospace;
+  color:var(--text);
+  overflow-x:hidden;
+}
+
+/* Grid bg */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,212,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,.018) 1px,transparent 1px);
+  background-size:50px 50px;
+  pointer-events:none;z-index:0;
+}
+
+.wrap{max-width:1060px;margin:0 auto;padding:40px 20px;position:relative;z-index:1}
+
+/* ── HEADER ── */
+.header{text-align:center;margin-bottom:48px}
+.header-badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);
+  border-radius:4px;padding:5px 18px;margin-bottom:18px;
+  font-size:10px;letter-spacing:4px;color:#00d4ff;text-transform:uppercase
+}
+.header h1{
+  font-family:'Syne',sans-serif;
+  font-size:clamp(28px,5vw,52px);font-weight:800;
+  line-height:1.1;margin-bottom:12px;
+  background:linear-gradient(135deg,#e2f0ff 0%,#00d4ff 40%,#a78bfa 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text
+}
+.header p{color:var(--muted);font-size:12px;letter-spacing:1px}
+
+/* ── SECTOR SELECTOR ── */
+.sector-label{font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;margin-bottom:12px}
+.sectors{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:32px}
+
+.sector-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:12px;padding:18px 20px;
+  cursor:pointer;transition:all .25s;
+  position:relative;overflow:hidden;
+}
+.sector-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at top left,var(--sc-glow,rgba(0,212,255,.06)),transparent 70%);
+  opacity:0;transition:opacity .3s;
+}
+.sector-card:hover::before,.sector-card.active::before{opacity:1}
+.sector-card:hover{border-color:var(--sc-border,rgba(0,212,255,.35));transform:translateY(-2px)}
+.sector-card.active{
+  border-color:var(--sc-color,#00d4ff);
+  box-shadow:0 0 0 1px var(--sc-color,#00d4ff), 0 8px 32px var(--sc-glow,rgba(0,212,255,.12))
+}
+.sc-icon{font-size:26px;margin-bottom:10px;display:block}
+.sc-name{
+  font-family:'Syne',sans-serif;font-weight:700;font-size:14px;
+  color:var(--sc-color,#00d4ff);margin-bottom:4px
+}
+.sc-desc{font-size:10px;color:var(--muted);line-height:1.7}
+.sc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}
+.sc-tag{
+  font-size:9px;padding:2px 8px;border-radius:3px;
+  background:var(--sc-glow,rgba(0,212,255,.08));
+  border:1px solid var(--sc-border,rgba(0,212,255,.2));
+  color:var(--sc-color,#00d4ff);letter-spacing:.5px
+}
+
+/* Sector themes */
+.sector-card[data-sector="health"]{--sc-color:#22d3ee;--sc-glow:rgba(34,211,238,.08);--sc-border:rgba(34,211,238,.3)}
+.sector-card[data-sector="banking"]{--sc-color:#f59e0b;--sc-glow:rgba(245,158,11,.08);--sc-border:rgba(245,158,11,.3)}
+.sector-card[data-sector="chatbot"]{--sc-color:#a78bfa;--sc-glow:rgba(167,139,250,.08);--sc-border:rgba(167,139,250,.3)}
+
+/* ── ACTIVE SECTOR INFO BAR ── */
+.sector-info{
+  display:none;
+  border-radius:10px;padding:14px 20px;margin-bottom:24px;
+  font-size:11px;line-height:1.9;
+}
+.sector-info.visible{display:block;animation:fi .3s ease}
+.si-row{display:flex;gap:8px;align-items:flex-start}
+.si-emoji{font-size:16px;flex-shrink:0;margin-top:1px}
+.si-text{color:var(--text)}
+.si-text b{color:inherit}
+
+/* ── INPUT AREA ── */
+.samples-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.sbtn{
+  background:rgba(255,255,255,.03);border:1px solid var(--border);
+  border-radius:6px;padding:5px 14px;color:var(--muted);
+  font-size:10px;cursor:pointer;font-family:inherit;
+  letter-spacing:.5px;transition:all .2s
+}
+.sbtn:hover{background:rgba(255,255,255,.07);color:var(--text);border-color:rgba(255,255,255,.15)}
+
+.textarea-wrap{position:relative;margin-bottom:4px}
+textarea{
+  width:100%;background:var(--surface);
+  border:1px solid var(--border);border-radius:10px;
+  padding:16px;color:#e2e8f0;font-size:13px;line-height:1.9;
+  resize:vertical;font-family:'Space Mono',monospace;
+  outline:none;transition:border .2s;min-height:110px
+}
+textarea:focus{border-color:var(--sector-color)}
+.ccount{text-align:right;font-size:10px;color:var(--dimmed);margin-bottom:14px;letter-spacing:.5px}
+
+#go{
+  width:100%;padding:14px;
+  background:linear-gradient(135deg,var(--sector-color),var(--sector-accent,#a78bfa));
+  border:none;border-radius:10px;
+  color:#000;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:'Syne',sans-serif;
+  letter-spacing:1px;margin-bottom:28px;
+  box-shadow:0 0 40px var(--sector-glow);
+  transition:all .3s;text-transform:uppercase
+}
+#go:disabled{
+  background:rgba(30,45,66,.5);color:var(--dimmed);
+  box-shadow:none;cursor:not-allowed
+}
+#go:not(:disabled):hover{transform:translateY(-1px);box-shadow:0 4px 40px var(--sector-glow)}
+
+/* ── RESULTS ── */
+.stats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.stat{
+  flex:1 1 100px;border-radius:8px;padding:12px 14px;text-align:center;
+  border:1px solid;
+}
+.sv{font-size:20px;font-weight:700;font-family:'Syne',sans-serif}
+.sl{font-size:9px;color:var(--muted);margin-top:3px;letter-spacing:1.5px;text-transform:uppercase}
+
+.etags{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:18px}
+.etag{border-radius:5px;padding:4px 12px;font-size:10px;font-weight:700;letter-spacing:.5px}
+
+.tabs{display:flex;gap:3px;background:rgba(255,255,255,.03);border-radius:8px;padding:4px;width:fit-content;margin-bottom:16px}
+.tbtn{
+  background:transparent;border:1px solid transparent;border-radius:5px;
+  padding:7px 16px;color:var(--muted);font-size:11px;
+  cursor:pointer;font-family:'Space Mono',monospace;transition:all .2s;letter-spacing:.5px
+}
+.tbtn.on{
+  background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.3);
+  color:#00d4ff;font-weight:700
+}
+
+.obox{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;padding:20px;line-height:2.4;
+  font-size:13px;margin-bottom:12px;word-break:break-word
+}
+.ohdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.olbl{font-size:9px;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase}
+#cpbtn{
+  background:rgba(255,255,255,.05);border:1px solid var(--border);
+  border-radius:5px;padding:4px 12px;color:var(--muted);
+  font-size:10px;cursor:pointer;font-family:inherit;transition:all .2s
+}
+#cpbtn:hover{color:var(--text);border-color:rgba(255,255,255,.2)}
+
+.notice{
+  border-radius:8px;padding:10px 16px;
+  font-size:11px;margin-top:4px;letter-spacing:.3px
+}
+
+.vwrap{background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.vhdr{padding:12px 20px;border-bottom:1px solid var(--border);font-size:9px;color:var(--muted);letter-spacing:2.5px;text-transform:uppercase}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th{padding:10px 16px;text-align:left;color:var(--muted);font-weight:600;letter-spacing:1px;font-size:9px;text-transform:uppercase;background:rgba(255,255,255,.02)}
+td{padding:10px 16px;border-top:1px solid rgba(255,255,255,.03)}
+tr:nth-child(even) td{background:rgba(255,255,255,.01)}
+
+.dbg{
+  border-radius:8px;padding:12px 16px;margin-bottom:16px;
+  font-size:11px;white-space:pre-wrap;line-height:1.9;letter-spacing:.3px
+}
+.dbg.ok{background:rgba(0,212,255,.04);border:1px solid rgba(0,212,255,.15);color:#67e8f9}
+.dbg.warn{background:rgba(245,158,11,.04);border:1px solid rgba(245,158,11,.2);color:#fbbf24}
+
+.legend{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));
+  gap:8px;margin-bottom:24px;padding:16px;
+  background:rgba(255,255,255,.015);border:1px solid var(--border);border-radius:10px
+}
+.leg-item{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--muted)}
+.leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+
+.hint{text-align:center;padding:48px 0;color:var(--dimmed);font-size:12px;letter-spacing:1px}
+.choose-hint{text-align:center;padding:32px 0;color:var(--dimmed);font-size:11px;letter-spacing:1px}
+
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+.fi{animation:fi .3s ease}
+
+/* sector-specific tab active colors */
+body.health .tbtn.on{background:rgba(34,211,238,.1);border-color:rgba(34,211,238,.3);color:#22d3ee}
+body.banking .tbtn.on{background:rgba(245,158,11,.1);border-color:rgba(245,158,11,.3);color:#f59e0b}
+body.chatbot .tbtn.on{background:rgba(167,139,250,.1);border-color:rgba(167,139,250,.3);color:#a78bfa}
+
+
+/* divider */
+.divider{height:1px;background:var(--border);margin:28px 0}
+
+/* pulsing dot on active sector */
+.active-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--sc-color,#00d4ff);
+  display:inline-block;margin-right:6px;
+  animation:pulse 2s infinite
+}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* sector badge on output */
+.sector-badge-out{
+  display:inline-flex;align-items:center;gap:6px;
+  border-radius:5px;padding:3px 12px;font-size:9px;
+  letter-spacing:2px;text-transform:uppercase;
+  font-weight:700;margin-bottom:14px
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-badge">🔬 Sektörel PII Maskeleme Sistemi</div>
+    <h1>Sırdaş Yapay Zeka</h1>
+    <p>Sektörünüzü seçin · Hassas verileri tespit edin · SHA-256 ile maskeleyin</p>
+  </div>
+
+  <!-- SECTOR SELECTOR -->
+  <div class="sector-label">Sektör Seçin</div>
+  <div class="sectors">
+
+    <div class="sector-card" data-sector="health" onclick="selectSector('health')">
+      <span class="sc-icon">🏥</span>
+      <div class="sc-name">Sağlık</div>
+      <div class="sc-desc">Hasta verilerini, tıbbi kayıtları ve klinik notları güvenle anonim hale getirin.</div>
+      <div class="sc-tags">
+        <span class="sc-tag">Hasta ID</span>
+        <span class="sc-tag">T.C. Kimlik</span>
+        <span class="sc-tag">Tanı Kodu</span>
+        <span class="sc-tag">Kan Grubu</span>
+        <span class="sc-tag">İlaç Adı</span>
+        <span class="sc-tag">Hekim Adı</span>
+      </div>
+    </div>
+
+    <div class="sector-card" data-sector="banking" onclick="selectSector('banking')">
+      <span class="sc-icon">🏦</span>
+      <div class="sc-name">Bankacılık</div>
+      <div class="sc-desc">Finansal işlem verilerini, hesap bilgilerini ve müşteri kayıtlarını koruyun.</div>
+      <div class="sc-tags">
+        <span class="sc-tag">IBAN</span>
+        <span class="sc-tag">Kart No</span>
+        <span class="sc-tag">Hesap No</span>
+        <span class="sc-tag">Tutar</span>
+        <span class="sc-tag">Şube Kodu</span>
+        <span class="sc-tag">Müşteri No</span>
+      </div>
+    </div>
+
+    <div class="sector-card" data-sector="chatbot" onclick="selectSector('chatbot')">
+      <span class="sc-icon">🤖</span>
+      <div class="sc-name">Chatbot & AI</div>
+      <div class="sc-desc">Kullanıcı mesajlarını AI'ya göndermeden önce kişisel verilerden arındırın.</div>
+      <div class="sc-tags">
+        <span class="sc-tag">İsim</span>
+        <span class="sc-tag">E-posta</span>
+        <span class="sc-tag">Telefon</span>
+        <span class="sc-tag">Konum</span>
+        <span class="sc-tag">URL</span>
+        <span class="sc-tag">IP Adresi</span>
+      </div>
+    </div>
+
+
+
+  </div>
+
+  <!-- SECTOR INFO BAR -->
+  <div class="sector-info" id="sector-info"></div>
+
+  <!-- INPUT (hidden until sector selected) -->
+  <div id="input-area" style="display:none">
+    <div class="sector-label" id="samples-label">Örnek Metinler</div>
+    <div class="samples-row" id="samples-row"></div>
+
+    <textarea id="txt" rows="5" placeholder="Metin girin..." oninput="onInput()"></textarea>
+    <div class="ccount"><span id="cc">0</span> karakter</div>
+
+    <div class="sector-label" style="margin-bottom:12px">Tespit Edilecek Veri Tipleri</div>
+    <div class="legend" id="legend"></div>
+
+    <button id="go" onclick="doAnalyze()" disabled>🔍 ANALİZ ET &amp; MASKELE</button>
+  </div>
+
+  <div class="choose-hint" id="choose-hint">↑ Başlamak için bir sektör seçin</div>
+
+  <div id="out" style="display:none"></div>
+  <div class="hint" id="hint" style="display:none">↑ Metin girin veya bir örnek seçin</div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// SECTOR DEFINITIONS
+// ─────────────────────────────────────────────────────────────────────────────
+var SECTORS = {
+
+  health: {
+    name: 'Sağlık',
+    color: '#22d3ee',
+    accent: '#67e8f9',
+    glow: 'rgba(34,211,238,.2)',
+    bodyClass: 'health',
+    info: {
+      where: '🏥 Hastane bilgi sistemleri, e-Nabız entegrasyonları, klinik karar destek yazılımları',
+      why: '🔒 KVKK ve HIPAA kapsamında hasta mahremiyeti zorunlu — tıbbi veriler özel kategori kişisel veri',
+      how: '⚙️ Anamnez notları, laboratuvar sonuçları ve reçeteler AI\'ya gönderilmeden önce anonimleştirilir'
+    },
+    samples: [
+      {
+        label: 'Hasta Kaydı',
+        text: 'Hasta: Ahmet Kaya, T.C. 34501234560, Doğum: 12.05.1978. Şikayet: kronik sırt ağrısı. Tanı: L4-L5 disk hernisi. İlaç: Voltaren 75mg. Hekim: Dr. Selma Arslan. Tel: 0532-111-2233. E-posta: ahmet.kaya@gmail.com'
+      },
+      {
+        label: 'Reçete Notu',
+        text: 'Hasta Zeynep Demir (TC: 22345678901) Acıbadem Hastanesi polikliniğinden 15.03.2024 tarihinde muayene oldu. Kan grubu: A Rh+. Tansiyon: 130/85. Amoxicillin 500mg 3x1, 7 gün. Kontrol: 10 gün sonra.'
+      },
+      {
+        label: 'Klinik Not',
+        text: 'Poliklinik No: PKL-2024-00891. Çocuk hastası: Elif Çelik, 8 yaşında. Veli: Fatma Çelik, 0212-333-4455. Şikayet: ateş, öksürük. Tanı: Üst solunum yolu enfeksiyonu. ICD-10: J06.9. Antibiyotik başlandı.'
+      }
+    ],
+    detectors: [
+      {key:'PERSON',        icon:'👤', label:'Hasta / Hekim Adı',  color:'#ff6b35'},
+      {key:'NRP',           icon:'🪪', label:'T.C. Kimlik No',     color:'#22d3ee'},
+      {key:'PHONE_NUMBER',  icon:'📞', label:'Telefon',            color:'#f59e0b'},
+      {key:'EMAIL_ADDRESS', icon:'📧', label:'E-posta',            color:'#a855f7'},
+      {key:'LOCATION',      icon:'📍', label:'Konum / Hastane',    color:'#06b6d4'},
+      {key:'DATE',          icon:'📅', label:'Tarih',              color:'#ec4899'},
+      {key:'DIAGNOSIS',     icon:'🩺', label:'Tanı Kodu (ICD)',    color:'#22d3ee'},
+      {key:'DRUG',          icon:'💊', label:'İlaç Adı & Dozu',    color:'#34d399'},
+      {key:'BLOOD_TYPE',    icon:'🩸', label:'Kan Grubu',          color:'#e11d48'},
+      {key:'PATIENT_ID',    icon:'🆔', label:'Hasta / Poliklinik No', color:'#84cc16'},
+    ],
+    extraDetectors: {
+      DATE: function(text){
+        return regexMatches(text, /\b\d{1,2}[.\/]\d{1,2}[.\/]\d{2,4}\b/g);
+      },
+      DIAGNOSIS: function(text){
+        return regexMatches(text, /\b[A-Z]\d{2}(?:\.\d{1,2})?\b/g);
+      },
+      DRUG: function(text){
+        var drugs = ['Voltaren','Amoxicillin','Augmentin','Parol','Nurofen','Aspirin','Metformin','Lipitor',
+          'Cipro','Coumadin','Celebrex','Ventolin','Nexium','Plavix','Zocor','Lasix','Lantus'];
+        var out = [];
+        drugs.forEach(function(d){
+          var re = new RegExp('\\b'+d+'(?:\\s+\\d+\\s*mg)?(?:\\s+\\d+[x×]\\d+)?','gi');
+          regexMatches(text,re).forEach(function(h){ out.push(h); });
+        });
+        return out;
+      },
+      BLOOD_TYPE: function(text){
+        return regexMatches(text, /\b(0|A|B|AB)\s*(Rh[+\-]|[+\-])\b/gi);
+      },
+      PATIENT_ID: function(text){
+        return regexMatches(text, /\b(?:PKL|HST|HAY|MRN|PAT)[-\s]?\d{4,}[-\s]?\d*\b/gi);
+      }
+    }
+  },
+
+  banking: {
+    name: 'Bankacılık',
+    color: '#f59e0b',
+    accent: '#fbbf24',
+    glow: 'rgba(245,158,11,.2)',
+    bodyClass: 'banking',
+    info: {
+      where: '🏦 Bankacılık uygulamaları, kredi değerlendirme sistemleri, müşteri hizmetleri chatbotları',
+      why: '⚖️ BDDK ve PCI-DSS yönetmelikleri — finansal veri ihlalleri ağır cezai yaptırım doğurur',
+      how: '🔐 Müşteri şikayetleri ve işlem kayıtları AI ile analiz edilmeden önce tüm finansal bilgiler maskelenir'
+    },
+    samples: [
+      {
+        label: 'Müşteri Şikayeti',
+        text: 'Müşteri Ayşe Kaya (Ziraat Müşteri No: 1234567890, İş Bankası CIF: CIF-9876543) TR33 0006 1005 1978 6457 8413 17 hesabından 15.000 TL ve 500 USD çekildiğini fark etti. Tel: 0533-222-3344. Şube: 0042.'
+      },
+      {
+        label: 'Döviz & Kredi',
+        text: 'Başvuran: Meryem Şahin, TC 45678901234. Garanti BBVA Müşteri No: GRT-00456789. IBAN: TR12 0006 2001 8765 4321 0000 01. Yıllık gelir: 480.000 TL. Döviz hesabı: 12.500 EUR ve 8.000 GBP. E-posta: meryem.sahin@firma.com'
+      },
+      {
+        label: 'Çoklu Banka Logu',
+        text: 'İşlem ID: TXN-20240315-004521. Gönderen: Kemal Aydın, Akbank Müşteri No: AKB-2024-554433. IBAN: TR98 0046 0090 0000 0123 4567 89. Tutar: 7.250,00 TL / 220,00 USD. Yapı Kredi hesap: 9988776655. IP: 192.168.1.45'
+      }
+    ],
+    detectors: [
+      {key:'PERSON',        icon:'👤', label:'Müşteri Adı (İsim Soyisim)', color:'#ff6b35'},
+      {key:'NRP',           icon:'🪪', label:'T.C. Kimlik',                color:'#22c55e'},
+      {key:'IBAN_CODE',     icon:'🏦', label:'IBAN',                        color:'#ec4899'},
+      {key:'BANK_ACCOUNT',  icon:'🏧', label:'Hesap / Kart No',             color:'#84cc16'},
+      {key:'PHONE_NUMBER',  icon:'📞', label:'Telefon',                     color:'#f59e0b'},
+      {key:'EMAIL_ADDRESS', icon:'📧', label:'E-posta',                     color:'#a855f7'},
+      {key:'LOCATION',      icon:'📍', label:'Şube / Şehir',               color:'#06b6d4'},
+      {key:'AMOUNT',        icon:'💰', label:'Tutar (16 Para Birimi)',      color:'#fbbf24'},
+      {key:'CUSTOMER_ID',   icon:'🆔', label:'Banka Müşteri No (20+ Banka)',color:'#fb923c'},
+      {key:'IP_ADDRESS',    icon:'🌐', label:'IP Adresi',                   color:'#38bdf8'},
+      {key:'TXN_ID',        icon:'🧾', label:'İşlem / Referans No',        color:'#c084fc'},
+    ],
+    extraDetectors: {
+      // Güçlendirilmiş PERSON: tek kelime "unvan + isim" ve "müşteri:" prefix'li isimler de yakalanır
+      PERSON: function(text){
+        var out = [];
+        // Standart 2-3 kelime kapitalize isim
+        var re1 = new RegExp('[A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,20}\\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,20}(?:\\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,20})?','g');
+        var STOP = {İzmir:1,Izmir:1,Ankara:1,İstanbul:1,Istanbul:1,Bursa:1,Adana:1,Antalya:1,
+          Bornova:1,Kadıköy:1,Kadikoy:1,Çankaya:1,Cankaya:1,Beşiktaş:1,Besiktas:1,
+          Üsküdar:1,Uskudar:1,Kayseri:1,Mersin:1,Konya:1,Gaziantep:1,
+          Garanti:1,Akbank:1,Ziraat:1,Vakıfbank:1,Halkbank:1,DenizBank:1,
+          Finansbank:1,Odeabank:1,Fibabanka:1,Anadolubank:1,Şekerbank:1,
+          Müşteri:1,Hesap:1,Iban:1,Tutar:1,Gönderen:1,Alıcı:1,Başvuran:1,
+          Şube:1,İşlem:1,Banka:1,Kredi:1,Kart:1,Döviz:1,Yıllık:1,Gelir:1};
+        regexMatches(text, re1).forEach(function(h){
+          var words = h.value.split(' ');
+          var bad = false;
+          for(var w=0;w<words.length;w++) if(STOP[words[w]]) bad=true;
+          if(!bad && words.length>=2) out.push(h);
+        });
+        // "Müşteri X Y" veya "Gönderen: X Y" prefix patternleri
+        var re2 = /(?:Müşteri|Başvuran|Gönderen|Alıcı|Yolcu)\s*:?\s*([A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,20}\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,20}(?:\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]{1,20})?)/g;
+        var m; re2.lastIndex=0;
+        while((m=re2.exec(text))!==null){
+          var val=m[1], vs=text.indexOf(val,m.index);
+          if(vs!==-1){
+            var dup=out.some(function(o){return o.start===vs;});
+            if(!dup) out.push({value:val,start:vs,end:vs+val.length});
+          }
+        }
+        return out;
+      },
+      // 16 para birimi: TL ₺ USD $ EUR € GBP £ CHF JPY SAR AED CAD AUD CNY RUB
+      AMOUNT: function(text){
+        var currencies = '(?:TL|₺|USD|\\$|EUR|€|GBP|£|CHF|JPY|SAR|AED|CAD|AUD|CNY|RUB)';
+        var numPart = '\\d{1,3}(?:[.,]\\d{3})*(?:[.,]\\d{2})?';
+        var re = new RegExp(
+          '\\b'+numPart+'\\s*'+currencies+'\\b|\\b'+currencies+'\\s*'+numPart+'\\b','gi'
+        );
+        return regexMatches(text, re);
+      },
+      // Türkiye'deki tüm büyük bankalar — prefix + standalone 10 hane
+      // Ziraat, İşBankası (CIF), Garanti BBVA (GRT), Akbank (AKB), YapıKredi (YKB/YKN),
+      // Halkbank (HLK/HAL), Vakıfbank (VKF/VKB), QNB Finansbank (FNB/QNB),
+      // DenizBank (DNZ), TEB (TEB), ING (ING), HSBC (HSB/HST),
+      // Odeabank (ODB), Fibabanka (FIB), Şekerbank (SKR/SEK),
+      // Burgan Bank (BRG), Anadolubank (ADB/AND), Alternatif Bank (ALT),
+      // Kuveyt Türk (KUV/KT), Albaraka (ALB), Türkiye Finans (TRF),
+      // Ziraat Katılım (ZKT), Vakıf Katılım (VKT), Emlak Katılım (EKT),
+      // PTT Bank (PTT), Şekerbank (SKB), Türk Eximbank (EXM)
+      CUSTOMER_ID: function(text){
+        var out = [];
+        var prefixRe = /\b(?:MÜŞ|CIF|GRT|AKB|YKB|YKN|HLK|HAL|VKF|VKB|FNB|QNB|DNZ|TEB|ING|HSB|HST|ODB|FIB|SKR|SKB|SEK|BRG|ADB|AND|ALT|KUV|KT|ALB|TRF|ZKT|VKT|EKT|PTT|EXM|ZRT|SHB)[-\s]?(?:\d{2,6}[-\s]?)?\d{4,}\b/gi;
+        regexMatches(text, prefixRe).forEach(function(h){ out.push(h); });
+        // "Banka adı Müşteri No: XXXXX" contextli sayılar
+        var ctxRe = /(?:müşteri\s*no|müşteri\s*numarası|customer\s*(?:no|id)|cif\s*no?)\.?\s*:?\s*(\d{7,12})\b/gi;
+        var m; ctxRe.lastIndex=0;
+        while((m=ctxRe.exec(text))!==null){
+          var val=m[1], vs=text.indexOf(val,m.index);
+          if(vs!==-1){
+            var dup=out.some(function(o){return o.start<=vs&&o.end>=vs+val.length;});
+            if(!dup) out.push({value:val,start:vs,end:vs+val.length});
+          }
+        }
+        // Standalone 10-digit (Ziraat tarzı)
+        var re10=/\b(\d{10})\b/g; re10.lastIndex=0;
+        while((m=re10.exec(text))!==null){
+          var b=m.index>0?text[m.index-1]:' ', a=(m.index+10)<text.length?text[m.index+10]:' ';
+          if(!/[0-9]/.test(b)&&!/[0-9]/.test(a)){
+            var already=out.some(function(o){return o.start<=m.index&&o.end>=m.index+10;});
+            if(!already) out.push({value:m[0],start:m.index,end:m.index+10});
+          }
+        }
+        return out;
+      },
+      IP_ADDRESS: function(text){
+        return regexMatches(text, /\b(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g);
+      },
+      TXN_ID: function(text){
+        return regexMatches(text, /\b(?:TXN|TRX|ISL|REF|EFT|HAV)[-\s]?\d{4,}[-\s]?\d*\b/gi);
+      }
+    }
+  },
+
+  chatbot: {
+    name: 'Chatbot & AI',
+    color: '#a78bfa',
+    accent: '#c4b5fd',
+    glow: 'rgba(167,139,250,.2)',
+    bodyClass: 'chatbot',
+    info: {
+      where: '🤖 Müşteri hizmetleri chatbotları, AI asistanlar, otomatik e-posta yanıtlayıcılar',
+      why: '🛡️ Kullanıcı mesajları üçüncü taraf AI API\'lerine gönderilmeden önce PII temizlenmeli',
+      how: '✂️ Gerçek zamanlı mesaj akışında isim, telefon, konum gibi veriler otomatik maskelenerek AI\'ya iletilir'
+    },
+    samples: [
+      {
+        label: 'Destek Mesajı',
+        text: 'Merhaba, ben Selin Yıldız. 0544-888-9900 nolu telefonumdan sipariş verdim ama gelmedi. E-posta adresim selin.yildiz@outlook.com. İzmir Alsancak adresime teslim edilecekti. Sipariş no: SP-20240312-4421'
+      },
+      {
+        label: 'AI Asistan Sorgusu',
+        text: 'Ahmet Yılmaz burada. Posta kodum 34220, İstanbul Gaziosmanpaşa\'dan yazıyorum. TC kimlik numaram 11223344556. Web sitem https://ahmetsirket.com.tr için fatura kesmek istiyorum.'
+      },
+      {
+        label: 'Otomatik Ticket',
+        text: 'Kullanıcı: fatma_celik_88@gmail.com | IP: 78.186.45.210 | Mesaj: Şifremi unuttum, telefon numaram 0212-444-5566. İsim soyisim: Fatma Çelik. Ankara Çankaya\'dan bağlanıyorum.'
+      }
+    ],
+    detectors: [
+      {key:'PERSON',        icon:'👤', label:'Kullanıcı Adı',    color:'#ff6b35'},
+      {key:'PHONE_NUMBER',  icon:'📞', label:'Telefon',          color:'#f59e0b'},
+      {key:'EMAIL_ADDRESS', icon:'📧', label:'E-posta',          color:'#a855f7'},
+      {key:'LOCATION',      icon:'📍', label:'Konum',            color:'#06b6d4'},
+      {key:'NRP',           icon:'🪪', label:'T.C. Kimlik',      color:'#22c55e'},
+      {key:'URL',           icon:'🌐', label:'URL / Web',        color:'#0ea5e9'},
+      {key:'POSTAL_CODE',   icon:'📮', label:'Posta Kodu',       color:'#fb923c'},
+      {key:'IP_ADDRESS',    icon:'🖥️', label:'IP Adresi',        color:'#38bdf8'},
+      {key:'ORDER_ID',      icon:'📦', label:'Sipariş No',       color:'#c084fc'},
+    ],
+    extraDetectors: {
+      IP_ADDRESS: function(text){
+        return regexMatches(text, /\b(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\b/g);
+      },
+      ORDER_ID: function(text){
+        return regexMatches(text, /\b(?:SP|SIP|ORD|ORDER)[-\s]?\d{4,}[-\s]?\d*\b/gi);
+      }
+    }
+  },
+
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BASE COLORS
+// ─────────────────────────────────────────────────────────────────────────────
+var BASE_COLORS = {
+  PERSON:'#ff6b35', NRP:'#22c55e', PHONE_NUMBER:'#f59e0b',
+  EMAIL_ADDRESS:'#a855f7', LOCATION:'#06b6d4', IBAN_CODE:'#ec4899',
+  BANK_ACCOUNT:'#84cc16', URL:'#0ea5e9', POSTAL_CODE:'#fb923c',
+  DATE:'#ec4899', DIAGNOSIS:'#22d3ee', DRUG:'#34d399', BLOOD_TYPE:'#e11d48',
+  PATIENT_ID:'#84cc16', AMOUNT:'#fbbf24', CUSTOMER_ID:'#fb923c',
+  IP_ADDRESS:'#38bdf8', TXN_ID:'#c084fc', ORDER_ID:'#c084fc',
+  PASSPORT:'#e11d48'
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CURRENT STATE
+// ─────────────────────────────────────────────────────────────────────────────
+var CURRENT_SECTOR = null;
+var STATE = null;
+var ACTIVE_TAB = 'masked';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SELECT SECTOR
+// ─────────────────────────────────────────────────────────────────────────────
+function selectSector(key){
+  CURRENT_SECTOR = key;
+  var s = SECTORS[key];
+
+  // Update cards
+  document.querySelectorAll('.sector-card').forEach(function(c){
+    c.classList.toggle('active', c.dataset.sector === key);
+  });
+
+  // Update body class & CSS vars
+  document.body.className = s.bodyClass;
+  document.documentElement.style.setProperty('--sector-color', s.color);
+  document.documentElement.style.setProperty('--sector-accent', s.accent);
+  document.documentElement.style.setProperty('--sector-glow', s.glow);
+
+  // Sector info bar
+  var info = s.info;
+  var infoEl = document.getElementById('sector-info');
+  infoEl.style.background = 'rgba('+hexToRgb(s.color)+',.04)';
+  infoEl.style.border = '1px solid rgba('+hexToRgb(s.color)+',.2)';
+  infoEl.innerHTML =
+    '<div class="si-row"><span class="si-emoji">'+s.name === 'Sağlık' ? '🏥' : ''+'</span>' +
+    '<div class="si-text">' +
+    '<div style="margin-bottom:5px"><b style="color:'+s.color+'">Nerede kullanılır?</b> — ' + info.where + '</div>' +
+    '<div style="margin-bottom:5px"><b style="color:'+s.color+'">Neden gerekli?</b> — ' + info.why + '</div>' +
+    '<div><b style="color:'+s.color+'">Nasıl çalışır?</b> — ' + info.how + '</div>' +
+    '</div></div>';
+  infoEl.className = 'sector-info visible';
+
+  // Samples
+  var samplesRow = document.getElementById('samples-row');
+  samplesRow.innerHTML = '';
+  s.samples.forEach(function(sample, i){
+    var btn = document.createElement('button');
+    btn.className = 'sbtn';
+    btn.textContent = sample.label;
+    btn.onclick = function(){ loadSample(i); };
+    samplesRow.appendChild(btn);
+  });
+
+  // Legend
+  var legend = document.getElementById('legend');
+  legend.innerHTML = '';
+  s.detectors.forEach(function(d){
+    var col = d.color || BASE_COLORS[d.key] || '#888';
+    var item = document.createElement('div');
+    item.className = 'leg-item';
+    item.innerHTML = '<div class="leg-dot" style="background:'+col+'"></div>'+d.icon+' '+d.label;
+    legend.appendChild(item);
+  });
+
+  // Reset
+  STATE = null;
+  document.getElementById('txt').value = '';
+  document.getElementById('cc').textContent = '0';
+  document.getElementById('go').disabled = true;
+  document.getElementById('out').style.display = 'none';
+  document.getElementById('hint').style.display = 'none';
+
+  document.getElementById('input-area').style.display = 'block';
+  document.getElementById('choose-hint').style.display = 'none';
+}
+
+function hexToRgb(hex){
+  var r = parseInt(hex.slice(1,3),16);
+  var g = parseInt(hex.slice(3,5),16);
+  var b = parseInt(hex.slice(5,7),16);
+  return r+','+g+','+b;
+}
+
+function loadSample(i){
+  var s = SECTORS[CURRENT_SECTOR];
+  document.getElementById('txt').value = s.samples[i].text;
+  onInput();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BASE DETECTORS
+// ─────────────────────────────────────────────────────────────────────────────
+function regexMatches(text, re){
+  var out=[]; re.lastIndex=0; var m;
+  while((m=re.exec(text))!==null)
+    out.push({value:m[0],start:m.index,end:m.index+m[0].length});
+  return out;
+}
+
+var TR_UPPER='A-ZÇĞİÖŞÜ';
+var TR_LOWER='a-zçğıöşü';
+
+var STOP_LIST=[
+  'İzmir','Izmir','Ankara','İstanbul','Istanbul','Bursa','Adana','Antalya',
+  'Bornova','Kadıköy','Kadikoy','Çankaya','Cankaya','Beşiktaş','Besiktas',
+  'Üsküdar','Uskudar','Kayseri','Eskişehir','Eskisehir','Mersin','Konya',
+  'Gaziantep','Acıbadem','Alsancak','Gaziosmanpaşa',
+  'No','Mah','Sok','Cad','Tel','TC','TR','TL','Adres','Mail',
+  'Ben','Ve','Da','De','Bu','Su','Bir','İki','Iki','Üç','Uc','İle','Ile',
+  'İçin','Icin','Gibi','Haber','Bilgi','Müşteri','Musteri','Toplantı',
+  'Yolcu','Diğer','Web','Site','Http','Https','Www',
+  'Doktor','Hekim','Hasta','Servis','Departman','Finans','Mühendislik',
+  'Kıdemli','Backend','Frontend','Geliştirici'
+];
+var STOP_SET={};
+STOP_LIST.forEach(function(w){ STOP_SET[w]=true; });
+
+var BASE_FINDERS = {
+  EMAIL_ADDRESS: function(t){ return regexMatches(t, /[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/g); },
+  IBAN_CODE: function(t){
+    var hits=regexMatches(t,/TR\d{2}[ ]?\d{4}[ ]?\d{4}[ ]?\d{4}[ ]?\d{4}[ ]?\d{4}[ ]?\d{0,2}/g);
+    return hits.map(function(h){var v=h.value.replace(/\s+$/,'');return{value:v,start:h.start,end:h.start+v.length};});
+  },
+  NRP: function(t){
+    var out=[]; var re=/\d{11}/g; var m; re.lastIndex=0;
+    while((m=re.exec(t))!==null){
+      var before=m.index>0?t[m.index-1]:' ';
+      var after=(m.index+11)<t.length?t[m.index+11]:' ';
+      if(!/[0-9]/.test(before)&&!/[0-9]/.test(after)&&m[0][0]!=='0')
+        out.push({value:m[0],start:m.index,end:m.index+11});
+    }
+    return out;
+  },
+  PHONE_NUMBER: function(t){ return regexMatches(t, /0[2-5][0-9]{2}[-\s]?[0-9]{3}[-\s]?[0-9]{2}[-\s]?[0-9]{2}/g); },
+  URL: function(t){
+    var hits=regexMatches(t,/https?:\/\/[^\s<>"')\]]+|www\.[a-zA-Z0-9\-]+\.[a-zA-Z]{2,}[^\s]*/g);
+    return hits.map(function(h){var v=h.value.replace(/[.,;:!?)]+$/,'');return{value:v,start:h.start,end:h.start+v.length};});
+  },
+  BANK_ACCOUNT: function(t){
+    var out=[]; var re=/(?:hesap[a-zçğıöşü]*\s*(?:no|numarası|numarasi|number)?\.?\s*:?\s*|banka\s+hesab[a-zçğıöşü]*\s*:?\s*)([0-9]{10,16})/gi;
+    re.lastIndex=0; var m;
+    while((m=re.exec(t))!==null){
+      var val=m[1]; var vs=t.indexOf(val,m.index);
+      if(vs!==-1) out.push({value:val,start:vs,end:vs+val.length});
+    }
+    // Also standalone 16-digit card numbers
+    var re2=/\b(\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4})\b/g; re2.lastIndex=0;
+    while((m=re2.exec(t))!==null){
+      var already=out.some(function(o){return o.start<=m.index&&o.end>=m.index+m[0].length;});
+      if(!already) out.push({value:m[0],start:m.index,end:m.index+m[0].length});
+    }
+    return out;
+  },
+  POSTAL_CODE: function(t){
+    var out=[]; var m;
+    var re1=/(?:posta\s*kodu?|postal\s*code|zip\s*code?)\.?\s*:?\s*([0-9]{5})\b/gi; re1.lastIndex=0;
+    while((m=re1.exec(t))!==null){
+      var vs=t.indexOf(m[1],m.index);
+      if(vs!==-1) out.push({value:m[1],start:vs,end:vs+5});
+    }
+    return out;
+  },
+  LOCATION: function(t){
+    var cities=['İzmir','Izmir','Ankara','İstanbul','Istanbul','Bursa','Antalya','Adana',
+      'Konya','Gaziantep','Mersin','Diyarbakır','Diyarbakir','Bornova',
+      'Kadıköy','Kadikoy','Çankaya','Cankaya','Beşiktaş','Besiktas',
+      'Üsküdar','Uskudar','Kayseri','Eskişehir','Eskisehir','Alsancak',
+      'Gaziosmanpaşa','Acıbadem'];
+    var out=[];
+    cities.forEach(function(c){
+      var esc=c.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+      var re=new RegExp(esc+'(?:\\s[A-ZÇĞİÖŞÜ][a-zçğıöşü]+)?','g');
+      regexMatches(t,re).forEach(function(h){ out.push(h); });
+    });
+    return out;
+  },
+  PERSON: function(t){
+    var re=new RegExp('['+TR_UPPER+']['+TR_LOWER+']{1,20}\\s['+TR_UPPER+']['+TR_LOWER+']{1,20}(?:\\s['+TR_UPPER+']['+TR_LOWER+']{1,20})?','g');
+    return regexMatches(t,re).filter(function(h){
+      var words=h.value.split(' ');
+      for(var j=0;j<words.length;j++) if(STOP_SET[words[j]]) return false;
+      return words.length>=2;
+    });
+  }
+};
+
+function detectAll(text){
+  if(!CURRENT_SECTOR) return [];
+  var s = SECTORS[CURRENT_SECTOR];
+  var enabledKeys = s.detectors.map(function(d){ return d.key; });
+
+  // Build ordered detector list
+  var detectorFns = [];
+  enabledKeys.forEach(function(key){
+    var fn = (s.extraDetectors && s.extraDetectors[key]) || BASE_FINDERS[key];
+    if(fn) detectorFns.push({type:key, fn:fn});
+  });
+
+  var all=[];
+  detectorFns.forEach(function(d){
+    var hits=d.fn(text);
+    hits.forEach(function(hit){
+      var overlap=false;
+      for(var e=0;e<all.length;e++){
+        if(!(hit.end<=all[e].start||hit.start>=all[e].end)){overlap=true;break;}
+      }
+      if(!overlap) all.push({type:d.type,value:hit.value,start:hit.start,end:hit.end});
+    });
+  });
+  all.sort(function(a,b){return a.start-b.start;});
+  return all;
+}
+
+function sha256Short(str){
+  return window.crypto.subtle.digest('SHA-256',new TextEncoder().encode(str)).then(function(buf){
+    var bytes=new Uint8Array(buf); var hex='';
+    for(var i=0;i<bytes.length;i++) hex+=bytes[i].toString(16).padStart(2,'0');
+    return hex.slice(0,8).toUpperCase();
+  });
+}
+
+function onInput(){
+  var v=document.getElementById('txt').value;
+  document.getElementById('cc').textContent=v.length;
+  document.getElementById('go').disabled=!v.trim();
+  STATE=null;
+  document.getElementById('out').style.display='none';
+  document.getElementById('hint').style.display=v.trim()?'none':'block';
+}
+
+function doAnalyze(){
+  if(!CURRENT_SECTOR) return;
+  var text=document.getElementById('txt').value.trim();
+  if(!text) return;
+  var btn=document.getElementById('go');
+  btn.disabled=true; btn.textContent='⏳ ANALİZ EDİLİYOR...';
+  document.getElementById('hint').style.display='none';
+  document.getElementById('out').style.display='none';
+
+  setTimeout(function(){
+    var entities=detectAll(text);
+    var vault={}, valueToToken={}, valueToHash={}, counters={};
+    var promises=[];
+    entities.forEach(function(e){
+      if(valueToToken[e.value]) return;
+      if(!counters[e.type]) counters[e.type]=1;
+      var token='['+e.type+'_'+(counters[e.type]++)+']';
+      valueToToken[e.value]=token;
+      var p=sha256Short(e.value).then(function(hash){
+        vault[token]={original:e.value,hash:hash,type:e.type};
+        valueToHash[e.value]=hash;
+      });
+      promises.push(p);
+    });
+    Promise.all(promises).then(function(){
+      var masked='', cursor=0;
+      entities.forEach(function(e){
+        if(e.start>cursor) masked+=text.slice(cursor,e.start);
+        var token=valueToToken[e.value], hash=valueToHash[e.value];
+        masked+=(token&&hash)?(token+'#'+hash):e.value;
+        cursor=e.end;
+      });
+      masked+=text.slice(cursor);
+      STATE={entities:entities,vault:vault,masked:masked,text:text};
+      ACTIVE_TAB='masked';
+      renderAll();
+      btn.disabled=false;
+      btn.textContent='🔍 ANALİZ ET & MASKELE';
+    });
+  },300);
+}
+
+function getColor(type){
+  if(CURRENT_SECTOR){
+    var defs=SECTORS[CURRENT_SECTOR].detectors;
+    for(var i=0;i<defs.length;i++) if(defs[i].key===type) return defs[i].color||BASE_COLORS[type]||'#888';
+  }
+  return BASE_COLORS[type]||'#888';
+}
+function getIcon(type){
+  if(CURRENT_SECTOR){
+    var defs=SECTORS[CURRENT_SECTOR].detectors;
+    for(var i=0;i<defs.length;i++) if(defs[i].key===type) return defs[i].icon||'·';
+  }
+  return '·';
+}
+
+function renderAll(){
+  var entities=STATE.entities;
+  var el=document.getElementById('out');
+  el.style.display='block'; el.className='fi';
+
+  var typeCounts={};
+  entities.forEach(function(e){ typeCounts[e.type]=(typeCounts[e.type]||0)+1; });
+
+  var s=SECTORS[CURRENT_SECTOR];
+  var sectorBadge='<div class="sector-badge-out" style="background:rgba('+hexToRgb(s.color)+',.07);border:1px solid rgba('+hexToRgb(s.color)+',.25);color:'+s.color+'">'+
+    '<span class="active-dot"></span>'+s.name.toUpperCase()+' SEKTÖRÜ</div>';
+
+  var etags='';
+  for(var type in typeCounts){
+    var col=getColor(type); var ic=getIcon(type);
+    etags+='<div class="etag" style="background:'+col+'16;border:1px solid '+col+'40;color:'+col+'">'+ic+' '+type+' ×'+typeCounts[type]+'</div>';
+  }
+
+  var dbgLines=entities.map(function(e){return getIcon(e.type)+' ['+e.type+'] "'+e.value+'"';}).join('\n');
+  var dbg=entities.length>0
+    ?'<div class="dbg ok">Tespit edilen entityler ('+entities.length+' adet):\n'+dbgLines+'</div>'
+    :'<div class="dbg warn">⚠️ Bu metinde tespit edilebilir PII bulunamadı.</div>';
+
+  el.innerHTML=sectorBadge+dbg+
+    '<div class="stats">'+
+      sb(entities.length,'Bulunan PII',s.color)+
+      sb(Object.keys(typeCounts).length,'Benzersiz Tip','#a78bfa')+
+      sb('SHA-256','Hash Algo','#06b6d4')+
+      sb('SIFIR','Cloud PII','#22c55e')+
+    '</div>'+
+    '<div class="etags">'+etags+'</div>'+
+    '<div class="tabs">'+
+      '<button class="tbtn '+(ACTIVE_TAB==='highlight'?'on':'')+'" onclick="switchTab(\'highlight\')">🔍 Tespit</button>'+
+      '<button class="tbtn '+(ACTIVE_TAB==='masked'?'on':'')+'" onclick="switchTab(\'masked\')">🎭 Maskeli</button>'+
+      '<button class="tbtn '+(ACTIVE_TAB==='vault'?'on':'')+'" onclick="switchTab(\'vault\')">🗄 Vault</button>'+
+    '</div>'+
+    '<div id="tc">'+renderTab()+'</div>';
+}
+
+function switchTab(t){ACTIVE_TAB=t;renderAll();}
+
+function renderTab(){
+  if(ACTIVE_TAB==='highlight') return renderHighlight();
+  if(ACTIVE_TAB==='masked')    return renderMasked();
+  if(ACTIVE_TAB==='vault')     return renderVault();
+  return '';
+}
+
+function renderHighlight(){
+  var text=STATE.text, entities=STATE.entities;
+  var out='', cursor=0;
+  entities.forEach(function(e){
+    if(e.start>cursor) out+=esc(text.slice(cursor,e.start));
+    var col=getColor(e.type); var ic=getIcon(e.type);
+    out+='<span style="background:'+col+'22;border:1px solid '+col+'55;color:'+col+
+      ';border-radius:4px;padding:1px 7px;font-weight:700" title="'+e.type+'">'+
+      ic+' '+esc(e.value)+'<sup style="font-size:8px;opacity:.5;margin-left:2px">'+e.type+'</sup></span>';
+    cursor=e.end;
+  });
+  out+='<span style="color:#475569">'+esc(text.slice(cursor))+'</span>';
+  return '<div class="obox"><div class="olbl" style="margin-bottom:12px">Ham Metin — Tespit Edilen Entityler</div><div style="line-height:2.4">'+out+'</div></div>';
+}
+
+function renderMasked(){
+  var masked=STATE.masked;
+  var re=/(\[[A-Z_]+_[0-9]+\])#([A-F0-9]{8})/g;
+  var out='', last=0, m; re.lastIndex=0;
+  while((m=re.exec(masked))!==null){
+    if(m.index>last) out+='<span style="color:#475569">'+esc(masked.slice(last,m.index))+'</span>';
+    var token=m[1], hash=m[2];
+    var typeKey=token.replace(/\[([A-Z_]+)_[0-9]+\]/,'$1');
+    var col=getColor(typeKey);
+    out+='<span style="background:'+col+'1a;border:1px solid '+col+'44;color:'+col+
+      ';border-radius:5px;padding:2px 9px;font-weight:700;white-space:nowrap;font-size:.88em">'+
+      esc(token)+'<span style="color:'+col+'77;font-size:.8em;margin-left:3px">#'+hash+'</span></span>';
+    last=m.index+m[0].length;
+  }
+  if(last<masked.length) out+='<span style="color:#475569">'+esc(masked.slice(last))+'</span>';
+
+  var s=SECTORS[CURRENT_SECTOR];
+  return '<div class="obox"><div class="ohdr">'+
+    '<span class="olbl">Maskeli + Hashlenmiş — AI\'ya bu gönderilir</span>'+
+    '<button id="cpbtn" onclick="doCopy()">📋 Kopyala</button></div>'+
+    '<div style="line-height:2.4;word-break:break-word">'+out+'</div></div>'+
+    '<div class="notice" style="background:rgba('+hexToRgb(s.color)+',.04);border:1px solid rgba('+hexToRgb(s.color)+',.2);color:'+s.color+'">'+
+    '🔒 Bu metin güvenle AI API\'ye gönderilebilir. Gerçek kişisel veri içermez.</div>';
+}
+
+function renderVault(){
+  var rows='';
+  for(var token in STATE.vault){
+    var v=STATE.vault[token]; var col=getColor(v.type); var ic=getIcon(v.type);
+    rows+='<tr>'+
+      '<td style="color:'+col+';font-weight:700;font-size:10px">'+esc(token)+'</td>'+
+      '<td><span class="etag" style="background:'+col+'16;border:1px solid '+col+'44;color:'+col+';font-size:9px">'+ic+' '+v.type+'</span></td>'+
+      '<td style="color:#e2e8f0;word-break:break-all">'+esc(v.original)+'</td>'+
+      '<td style="color:#3d4f6a;font-family:\'Space Mono\',monospace">#'+v.hash+'</td>'+
+      '</tr>';
+  }
+  return '<div class="vwrap"><div class="vhdr">🗄 Mapping Vault — Sadece Lokal Bellekte, Buluta Gitmez</div>'+
+    '<table><thead><tr><th>Token</th><th>Tip</th><th>Orijinal Değer</th><th>SHA-256</th></tr></thead>'+
+    '<tbody>'+rows+'</tbody></table></div>';
+}
+
+function sb(val,lbl,color){
+  return '<div class="stat" style="background:rgba('+hexToRgb(color)+',.06);border-color:rgba('+hexToRgb(color)+',.2)">'+
+    '<div class="sv" style="color:'+color+'">'+val+'</div>'+
+    '<div class="sl">'+lbl+'</div></div>';
+}
+
+function doCopy(){
+  if(!STATE) return;
+  navigator.clipboard.writeText(STATE.masked).then(function(){
+    var b=document.getElementById('cpbtn');
+    if(b){b.textContent='✓ Kopyalandı';b.style.color='#22c55e';setTimeout(function(){b.textContent='📋 Kopyala';b.style.color='';},2000);}
+  });
+}
+
+function esc(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+</script>
+</body>
+</html>
