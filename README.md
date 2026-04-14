@@ -248,4 +248,6 @@ veya dosyayı direkt tarayıcıya sürükleyin.
 
 ## Lisans
 
-[GNU GPL v3](LICENSE)
+© 2026 Begüm Nur Akdeniz. All rights reserved.
+Bu kaynak kod izinsiz kullanılamaz, kopyalanamaz veya dağıtılamaz.
+Ticari kullanım için iletişime geçin: begumnakdeniz@gmail.com
