@@ -221,7 +221,7 @@ Herhangi bir `.html` dosyasını tarayıcıda açın. Kurulum gerekmez.
 
 ```bash
 # Repoyu klonla
-git clone https://github.com/kullanici-adi/sirdas-yapay-zeka.git
+git clone https://github.com/begumnakdeniz/sirdas-yapay-zeka.git
 
 # İstediğin versiyonu aç
 open v4-sektörel/sirdas-sektorel.html
